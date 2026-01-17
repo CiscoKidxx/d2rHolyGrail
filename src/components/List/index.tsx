@@ -134,26 +134,27 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab label={t("Statistics")} />
-            <Tab label={t("Unique armor")} />
-            <Tab label={t("Unique weapons")} />
-            <Tab label={t("Unique other")} />
+            {/* Bind values explicitly so tab selection aligns with TabState indices. */}
+            <Tab value={TabState.Statistics} label={t("Statistics")} />
+            <Tab value={TabState.UniqueArmor} label={t("Unique armor")} />
+            <Tab value={TabState.UniqueWeapons} label={t("Unique weapons")} />
+            <Tab value={TabState.UniqueOther} label={t("Unique other")} />
             {appSettings.grailType !== GrailType.Ethereal &&
               [
-                <Tab label={t("Sets")} key="sets" />,
-                appSettings.grailRunes && <Tab label={t("Runes")}  key="runes" />,
-                appSettings.grailRunewords && <Tab label={t("Runewords")}  key="runewords" />,
+                <Tab value={TabState.Sets} label={t("Sets")} key="sets" />,
+                appSettings.grailRunes && <Tab value={TabState.Runes} label={t("Runes")}  key="runes" />,
+                appSettings.grailRunewords && <Tab value={TabState.Runewords} label={t("Runewords")}  key="runewords" />,
               ]
             }
-            {/* Spacer pushes the History tab to the far right of the tab bar. */}
-            <Box sx={{ flex: 1 }} />
             {/* History is a lighter, floating text/icon-only tab aligned to the right edge. */}
             <Tab
+              value={TabState.History}
               icon={<HistoryIcon fontSize="small" />}
               iconPosition="start"
               label={t("History")}
               disableRipple
               sx={{
+                marginLeft: 'auto',
                 minHeight: 32,
                 minWidth: 'auto',
                 opacity: 0.6,
