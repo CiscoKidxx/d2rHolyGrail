@@ -13,6 +13,7 @@ import runeBgImg from '../../../assets/rune.svg';
 import { TabState, title } from '.';
 import Popup from './popup';
 import { Statistics } from '../Stats';
+import { History } from '../History';
 import { ChangeEvent, MouseEvent } from 'react';
 import { countInSaves, FlatItemsCache, flattenObject, simplifyItemName } from '../../utils/objects';
 import { AvailableRunesLine, CountLabel, CountLabelContainer, Rune, RuneBg, RuneIcon, RuneList, RuneName } from './styles';
@@ -84,6 +85,26 @@ export function TabPanel(props: TabPanelProps) {
     noFileSummary, noAnimation, appSettings, holyGrailStats, itemNotes = {}, availableRunes = {} } = props;
   const { gameMode, grailType } = appSettings;
   const { t } = useTranslation();
+
+  // Short-circuit for the History tab to avoid running list logic meant for item tabs.
+  if (index === TabState.History) {
+    return (
+      <div
+        role="tabpanel"
+        hidden={value !== index}
+        id={`simple-tabpanel-${index}`}
+        aria-labelledby={`simple-tab-${index}`}
+        style={{ height: '100%' }}
+      >
+        {value === index && (
+          <Box sx={{ p: 3, pt: 0 }}>
+            {/* Render the timeline-based history view. */}
+            <History appSettings={appSettings} />
+          </Box>
+        )}
+      </div>
+    );
+  }
 
   let flatItems: {[k: string]: {}} = {};
   let ethFlatItems: {[k: string]: {}} = {};
