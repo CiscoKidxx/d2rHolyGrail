@@ -3,6 +3,8 @@ export type ItemFoundLogEntry = {
   id: string;
   // ISO timestamp for when the item was first detected as found.
   foundAt: string;
+  // Name of the character/save file that discovered the item.
+  foundBy?: string;
 };
 
 // Storage key used for persisting the item-found log across sessions.
@@ -33,7 +35,11 @@ export const loadItemFoundLog = (): ItemFoundLogEntry[] => {
 
     // Filter entries to ensure they have the expected shape.
     return parsedLog.filter(
-      (entry) => entry && typeof entry.id === 'string' && typeof entry.foundAt === 'string'
+      (entry) =>
+        entry &&
+        typeof entry.id === 'string' &&
+        typeof entry.foundAt === 'string' &&
+        (entry.foundBy === undefined || typeof entry.foundBy === 'string')
     );
   } catch (error) {
     // If parsing fails, return an empty log to avoid breaking the UI.
@@ -56,7 +62,7 @@ const saveItemFoundLog = (entries: ItemFoundLogEntry[]) => {
 };
 
 // Append newly found item IDs to the persistent log.
-export const appendItemFoundLogEntries = (itemIds: string[]) => {
+export const appendItemFoundLogEntries = (itemIds: Array<{ id: string; foundBy?: string }>) => {
   // Skip work when there are no new items to log.
   if (itemIds.length === 0) {
     return;
@@ -64,9 +70,10 @@ export const appendItemFoundLogEntries = (itemIds: string[]) => {
 
   // Create log entries using a single timestamp for this discovery batch.
   const foundAt = new Date().toISOString();
-  const newEntries = itemIds.map((id) => ({
+  const newEntries = itemIds.map(({ id, foundBy }) => ({
     id,
     foundAt,
+    foundBy,
   }));
 
   // Load existing entries, append new entries, and persist the result.

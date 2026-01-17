@@ -263,10 +263,31 @@ export const computeStats = (
     ? uniqiItemsFound.filter((itemId) => !comparisonBaseline.includes(itemId))
     : [];
 
+  // Helper to resolve the save/character name that discovered a given item ID.
+  const resolveFoundBy = (itemId: string): string | undefined => {
+    // Ethereal IDs are prefixed in the log, so normalize before looking up.
+    const normalizedId = itemId.replace(/^ether/, '');
+    const item = items[normalizedId] || ethItems[normalizedId];
+
+    // Prefer the first save name from the inSaves record when available.
+    if (item && item.inSaves) {
+      const [saveName] = Object.keys(item.inSaves);
+      return saveName;
+    }
+
+    // Fall back to undefined when we cannot resolve a save name.
+    return undefined;
+  };
+
   // Persist a log entry for newly found items, without spamming the initial load state.
   if (newlyFoundItemIds.length > 0) {
     // Save the log entries to persistent storage for the Statistics UI.
-    appendItemFoundLogEntries(newlyFoundItemIds);
+    appendItemFoundLogEntries(
+      newlyFoundItemIds.map((itemId) => ({
+        id: itemId,
+        foundBy: resolveFoundBy(itemId),
+      }))
+    );
   }
 
   if (
