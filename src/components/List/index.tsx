@@ -23,6 +23,7 @@ import { settingsKeys } from '../../utils/defaultSettings';
 /* eslint-disable no-unused-vars */
 export enum TabState {
   Statistics,
+  History,
   UniqueArmor,
   UniqueWeapons,
   UniqueOther,
@@ -133,6 +134,7 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
             scrollButtons="auto"
           >
             <Tab label={t("Statistics")} />
+            <Tab label={t("History")} />
             <Tab label={t("Unique armor")} />
             <Tab label={t("Unique weapons")} />
             <Tab label={t("Unique other")} />
@@ -146,7 +148,7 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
           </Tabs> 
         : null}
       </Box>
-      {tab != TabState.Statistics && <MissingOnlySwitch>
+      {tab !== TabState.Statistics && tab !== TabState.History && <MissingOnlySwitch>
         <FormControlLabel
           style={{ opacity: 0.7, paddingTop: 10 }}
           control={<Switch size='small' onChange={handleOnlyMissing} checked={appSettings.onlyMissing} />}
@@ -159,6 +161,16 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
         player={items}
         ethPlayer={ethItems}
         stats={stats}
+        search=""
+        appSettings={appSettings}
+        holyGrailStats={holyGrailStats}
+      />}
+      {/* Render the History view as its own tab without search filtering. */}
+      {(tab === TabState.History) && <TabPanel
+        value={tab}
+        index={TabState.History}
+        player={items}
+        ethPlayer={ethItems}
         search=""
         appSettings={appSettings}
         holyGrailStats={holyGrailStats}
