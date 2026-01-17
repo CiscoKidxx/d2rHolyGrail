@@ -8,6 +8,7 @@ import { FileReaderResponse, GrailType, ItemNotes, Settings } from '../../@types
 import { Search } from '../Search';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';import DoneIcon from '@mui/icons-material/Done';
+import HistoryIcon from '@mui/icons-material/History';
 
 import { getHolyGrailSeedData } from '../../../electron/lib/holyGrailSeedData';
 
@@ -23,6 +24,7 @@ import { settingsKeys } from '../../utils/defaultSettings';
 /* eslint-disable no-unused-vars */
 export enum TabState {
   Statistics,
+  History,
   UniqueArmor,
   UniqueWeapons,
   UniqueOther,
@@ -143,10 +145,30 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
                 appSettings.grailRunewords && <Tab label={t("Runewords")}  key="runewords" />,
               ]
             }
+            {/* Spacer pushes the History tab to the far right of the tab bar. */}
+            <Box sx={{ flex: 1 }} />
+            {/* History is a lighter, floating text/icon-only tab aligned to the right edge. */}
+            <Tab
+              icon={<HistoryIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("History")}
+              disableRipple
+              sx={{
+                minHeight: 32,
+                minWidth: 'auto',
+                opacity: 0.6,
+                px: 1,
+                textTransform: 'none',
+                fontWeight: 400,
+                '&.Mui-selected': {
+                  opacity: 0.9,
+                },
+              }}
+            />
           </Tabs> 
         : null}
       </Box>
-      {tab != TabState.Statistics && <MissingOnlySwitch>
+      {tab !== TabState.Statistics && tab !== TabState.History && <MissingOnlySwitch>
         <FormControlLabel
           style={{ opacity: 0.7, paddingTop: 10 }}
           control={<Switch size='small' onChange={handleOnlyMissing} checked={appSettings.onlyMissing} />}
@@ -159,6 +181,16 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
         player={items}
         ethPlayer={ethItems}
         stats={stats}
+        search=""
+        appSettings={appSettings}
+        holyGrailStats={holyGrailStats}
+      />}
+      {/* Render the History view as its own tab without search filtering. */}
+      {(tab === TabState.History) && <TabPanel
+        value={tab}
+        index={TabState.History}
+        player={items}
+        ethPlayer={ethItems}
         search=""
         appSettings={appSettings}
         holyGrailStats={holyGrailStats}

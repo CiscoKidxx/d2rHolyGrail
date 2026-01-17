@@ -263,10 +263,97 @@ export const computeStats = (
     ? uniqiItemsFound.filter((itemId) => !comparisonBaseline.includes(itemId))
     : [];
 
+  // Build a metadata lookup for item type and rarity to enrich log entries.
+  const itemMetadataLookup: Record<string, { itemType: string; rarity: string }> = {};
+
+  // Helper to populate metadata for a set of flattened item IDs.
+  const addItemMetadata = (
+    flatItems: { [itemId: string]: {} },
+    itemType: string,
+    rarity: string,
+    isEthereal: boolean
+  ) => {
+    Object.keys(flatItems).forEach((itemId) => {
+      const logItemId = isEthereal ? `ether${itemId}` : itemId;
+      // Avoid overwriting metadata when multiple sources map to the same ID.
+      if (!itemMetadataLookup[logItemId]) {
+        itemMetadataLookup[logItemId] = {
+          itemType,
+          rarity: isEthereal ? `Ethereal ${rarity}` : rarity,
+        };
+      }
+    });
+  };
+
+  // Collect metadata for unique items by equipment type.
+  addItemMetadata(flattenObject(template.uniques.armor, 'armor'), 'Armor', 'Unique', false);
+  addItemMetadata(flattenObject(template.uniques.weapons, 'weapon'), 'Weapon', 'Unique', false);
+  addItemMetadata(flattenObject(template.uniques.other, 'other'), 'Other', 'Unique', false);
+
+  // Collect metadata for ethereal uniques by equipment type.
+  if (ethTemplate?.uniques?.armor) {
+    addItemMetadata(flattenObject(ethTemplate.uniques.armor, 'etharmor'), 'Armor', 'Unique', true);
+  }
+  if (ethTemplate?.uniques?.weapons) {
+    addItemMetadata(flattenObject(ethTemplate.uniques.weapons, 'ethweapon'), 'Weapon', 'Unique', true);
+  }
+  if (ethTemplate?.uniques?.other) {
+    addItemMetadata(flattenObject(ethTemplate.uniques.other, 'ethother'), 'Other', 'Unique', true);
+  }
+
+  // Collect metadata for sets, runes, and runewords.
+  addItemMetadata(flattenObject(template.sets, 'sets'), 'Set', 'Set', false);
+  if (template.runes) {
+    addItemMetadata(flattenObject(template.runes, 'runes'), 'Rune', 'Rune', false);
+  }
+  if (template.runewords) {
+    addItemMetadata(flattenObject(template.runewords, 'runewords'), 'Runeword', 'Runeword', false);
+  }
+
+  // Helper to resolve the save/character name that discovered a given item ID.
+  const resolveFoundBy = (itemId: string): string | undefined => {
+    // Ethereal IDs are prefixed in the log, so normalize before looking up.
+    const normalizedId = itemId.replace(/^ether/, '');
+    const item = items[normalizedId] || ethItems[normalizedId];
+
+    // Prefer the first save name from the inSaves record when available.
+    if (item && item.inSaves) {
+      const [saveName] = Object.keys(item.inSaves);
+      return saveName;
+    }
+
+    // Fall back to undefined when we cannot resolve a save name.
+    return undefined;
+  };
+
+  // Helper to resolve item type/rarity metadata for a given item ID.
+  const resolveItemMetadata = (itemId: string) => {
+    // Prefer metadata captured from the seed data lookup.
+    if (itemMetadataLookup[itemId]) {
+      return itemMetadataLookup[itemId];
+    }
+
+    // Fall back to a generic label when no metadata is available.
+    return {
+      itemType: 'Unknown',
+      rarity: 'Unknown',
+    };
+  };
+
   // Persist a log entry for newly found items, without spamming the initial load state.
   if (newlyFoundItemIds.length > 0) {
     // Save the log entries to persistent storage for the Statistics UI.
-    appendItemFoundLogEntries(newlyFoundItemIds);
+    appendItemFoundLogEntries(
+      newlyFoundItemIds.map((itemId) => {
+        const metadata = resolveItemMetadata(itemId);
+        return {
+          id: itemId,
+          foundBy: resolveFoundBy(itemId),
+          itemType: metadata.itemType,
+          rarity: metadata.rarity,
+        };
+      })
+    );
   }
 
   if (
