@@ -5,12 +5,14 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useEffect, useState } from 'react';
 
 import { StatisticsLine } from './line';
 import { Win } from './win';
 import { getHolyGrailSeedData } from '../../../electron/lib/holyGrailSeedData';
 import { useTranslation } from 'react-i18next';
 import Circle from './circle';
+import { ItemFoundLogEntry, loadItemFoundLog } from '../../utils/itemLog';
 
 type StatsProps = {
   appSettings: Settings,
@@ -24,9 +26,32 @@ export function Statistics({ stats, noAnimation, appSettings, holyGrailStats, on
   const holyGrailSeedData = getHolyGrailSeedData(appSettings, false)
   const ethGrailSeedData = getHolyGrailSeedData(appSettings, true)
   const { t } = useTranslation();
+  // Maintain a local copy of the persistent item-found log for display.
+  const [itemFoundLog, setItemFoundLog] = useState<ItemFoundLogEntry[]>(() => loadItemFoundLog());
+
+  // Format timestamps for display in the log table.
+  const formatFoundAt = (foundAt: string) => new Date(foundAt).toLocaleString();
+
+  // Keep the UI in sync when the persistent log is updated elsewhere.
+  useEffect(() => {
+    // Refresh the log by re-reading from persistent storage.
+    const refreshLog = () => setItemFoundLog(loadItemFoundLog());
+
+    // Listen for in-app updates as well as storage updates from other windows.
+    window.addEventListener('holyGrailItemFoundLogUpdated', refreshLog);
+    window.addEventListener('storage', refreshLog);
+
+    // Clean up listeners when the component is unmounted.
+    return () => {
+      window.removeEventListener('holyGrailItemFoundLogUpdated', refreshLog);
+      window.removeEventListener('storage', refreshLog);
+    };
+  }, []);
 
   const showNormal = appSettings.grailType !== GrailType.Ethereal;
   const showEthereal = appSettings.grailType === GrailType.Ethereal || appSettings.grailType === GrailType.Each;
+  // Display the most recent discoveries first in the log view.
+  const orderedItemFoundLog = itemFoundLog.slice().reverse();
 
   let counterTotal: number | false = false;
   let counterOwned: number | false = false;
@@ -150,6 +175,40 @@ export function Statistics({ stats, noAnimation, appSettings, holyGrailStats, on
               subTotal={subCounterTotal}
             />
           </div>
+        </Grid>
+        <Grid container style={{ marginTop: 50, alignItems: 'center', justifyContent: 'center' }}>
+          <Grid item xs={8}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>{t("Found items log")}</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>{t("Found at")}</TableCell>
+                        <TableCell>{t("Item ID")}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {orderedItemFoundLog.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={2}>{t("No items found yet")}</TableCell>
+                        </TableRow>
+                      )}
+                      {orderedItemFoundLog.map((entry, index) => (
+                        <TableRow key={`${entry.id}-${entry.foundAt}-${index}`}>
+                          <TableCell>{formatFoundAt(entry.foundAt)}</TableCell>
+                          <TableCell>{entry.id}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
         </Grid>
         {stats &&
           <>

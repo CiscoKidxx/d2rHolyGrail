@@ -4,6 +4,7 @@ import { ISetItems, IUniqueArmors, IUniqueOther, IUniqueWeapons } from 'd2-holy-
 import { runesSeed, runewordsSeed } from '../../electron/lib/holyGrailSeedData';
 import { runewordsMapping } from '../../electron/lib/runewordsMapping';
 import { AvailableRunes, GameMode, GameVersion, GrailType, HolyGrailSeed, HolyGrailStats, Item, ItemsInSaves, Settings, Stats } from '../@types/main.d';
+import { appendItemFoundLogEntries } from './itemLog';
 
 export const simplifyItemName = (name: string): string => name.replace(/[^a-z0-9]/gi, '').toLowerCase();
 export const isRune = (item: Item | IItem): boolean => !!item.type && !!item.type.match(/^r[0-3][0-9]$/);
@@ -216,9 +217,12 @@ export const computeSubStats = (
 }
 
 let prevUniqItemsFound: string[] = [];
+// Track the last non-empty snapshot so transient empty reads (e.g., during save/exit) don't re-trigger dings.
+let lastNonEmptyUniqItemsFound: string[] = [];
 let prevSoundTimestamp = Date.now();
 export const clearPrevUniqItemsFound = () => {
   prevUniqItemsFound = [];
+  lastNonEmptyUniqItemsFound = [];
   prevSoundTimestamp = Date.now();
 }
 export const computeStats = (
@@ -250,19 +254,37 @@ export const computeStats = (
     .concat(otherStats.uniqItemsList)
     .concat(setsStats.uniqItemsList);
   
-  if (settings.gameMode !== GameMode.Manual && playSound && Date.now() - prevSoundTimestamp > 1000) {
+  // Determine which items are new compared to the previous stable snapshot.
+  // If we read a transient empty snapshot during save/exit, fall back to the last non-empty list.
+  const comparisonBaseline = prevUniqItemsFound.length
+    ? prevUniqItemsFound
+    : lastNonEmptyUniqItemsFound;
+  const newlyFoundItemIds = comparisonBaseline.length
+    ? uniqiItemsFound.filter((itemId) => !comparisonBaseline.includes(itemId))
+    : [];
+
+  // Persist a log entry for newly found items, without spamming the initial load state.
+  if (newlyFoundItemIds.length > 0) {
+    // Save the log entries to persistent storage for the Statistics UI.
+    appendItemFoundLogEntries(newlyFoundItemIds);
+  }
+
+  if (
+    settings.gameMode !== GameMode.Manual
+    && playSound
+    && Date.now() - prevSoundTimestamp > 1000
+  ) {
     prevSoundTimestamp = Date.now();
-    // play sound if new item is found
-    if (prevUniqItemsFound.length) {
-      for (const itemId of uniqiItemsFound) {
-        if (!prevUniqItemsFound.includes(itemId)) {
-          playSound();
-          break;
-        }
-      }
+    // Play the sound only when there are newly found items.
+    if (newlyFoundItemIds.length > 0) {
+      playSound();
     }
   }
+  // Keep the latest snapshot, and record non-empty snapshots for future comparisons.
   prevUniqItemsFound = uniqiItemsFound;
+  if (uniqiItemsFound.length > 0) {
+    lastNonEmptyUniqItemsFound = uniqiItemsFound;
+  }
 
   return {
     normal: {
