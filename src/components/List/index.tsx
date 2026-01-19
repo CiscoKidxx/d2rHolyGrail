@@ -8,6 +8,7 @@ import { FileReaderResponse, GrailType, ItemNotes, Settings } from '../../@types
 import { Search } from '../Search';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';import DoneIcon from '@mui/icons-material/Done';
+import HistoryIcon from '@mui/icons-material/History';
 
 import { getHolyGrailSeedData } from '../../../electron/lib/holyGrailSeedData';
 
@@ -23,6 +24,7 @@ import { settingsKeys } from '../../utils/defaultSettings';
 /* eslint-disable no-unused-vars */
 export enum TabState {
   Statistics,
+  History,
   UniqueArmor,
   UniqueWeapons,
   UniqueOther,
@@ -132,21 +134,42 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab label={t("Statistics")} />
-            <Tab label={t("Unique armor")} />
-            <Tab label={t("Unique weapons")} />
-            <Tab label={t("Unique other")} />
+            {/* Bind values explicitly so tab selection aligns with TabState indices. */}
+            <Tab value={TabState.Statistics} label={t("Statistics")} />
+            <Tab value={TabState.UniqueArmor} label={t("Unique armor")} />
+            <Tab value={TabState.UniqueWeapons} label={t("Unique weapons")} />
+            <Tab value={TabState.UniqueOther} label={t("Unique other")} />
             {appSettings.grailType !== GrailType.Ethereal &&
               [
-                <Tab label={t("Sets")} key="sets" />,
-                appSettings.grailRunes && <Tab label={t("Runes")}  key="runes" />,
-                appSettings.grailRunewords && <Tab label={t("Runewords")}  key="runewords" />,
+                <Tab value={TabState.Sets} label={t("Sets")} key="sets" />,
+                appSettings.grailRunes && <Tab value={TabState.Runes} label={t("Runes")}  key="runes" />,
+                appSettings.grailRunewords && <Tab value={TabState.Runewords} label={t("Runewords")}  key="runewords" />,
               ]
             }
+            {/* History is a lighter, floating text/icon-only tab aligned to the right edge. */}
+            <Tab
+              value={TabState.History}
+              icon={<HistoryIcon fontSize="small" />}
+              iconPosition="start"
+              label={t("History")}
+              disableRipple
+              sx={{
+                marginLeft: 'auto',
+                minHeight: 32,
+                minWidth: 'auto',
+                opacity: 0.6,
+                px: 1,
+                textTransform: 'none',
+                fontWeight: 400,
+                '&.Mui-selected': {
+                  opacity: 0.9,
+                },
+              }}
+            />
           </Tabs> 
         : null}
       </Box>
-      {tab != TabState.Statistics && <MissingOnlySwitch>
+      {tab !== TabState.Statistics && tab !== TabState.History && <MissingOnlySwitch>
         <FormControlLabel
           style={{ opacity: 0.7, paddingTop: 10 }}
           control={<Switch size='small' onChange={handleOnlyMissing} checked={appSettings.onlyMissing} />}
@@ -159,6 +182,16 @@ export function List({ fileReaderResponse, appSettings, itemNotes }: ListProps) 
         player={items}
         ethPlayer={ethItems}
         stats={stats}
+        search=""
+        appSettings={appSettings}
+        holyGrailStats={holyGrailStats}
+      />}
+      {/* Render the History view as its own tab without search filtering. */}
+      {(tab === TabState.History) && <TabPanel
+        value={tab}
+        index={TabState.History}
+        player={items}
+        ethPlayer={ethItems}
         search=""
         appSettings={appSettings}
         holyGrailStats={holyGrailStats}
